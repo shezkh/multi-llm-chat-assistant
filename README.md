@@ -38,8 +38,8 @@ FastAPI (app.py)
 ## Quick start
 
 ```bash
-git clone https://github.com/shezkh/multi-llm-chat-platform.git
-cd multi-llm-chat-platform
+git clone https://github.com/shezkh/multi-llm-chat-assistant.git
+cd multi-llm-chat-assistant
 pip install -r requirements.txt
 cp .env.example .env        # add at least one provider API key
 python app.py               # serves on http://localhost:10000
