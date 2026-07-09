@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Multi-LLM Chat Assistant</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    /* Reset & Base Styles */
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f4f4f9;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    /* Header Layout (Flexbox) */
+    .header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 20px;
+        background-color: #f4f4f9;
+        border-bottom: 1px solid #ddd;
+    }
+    h2 {
+        margin: 0;
+        color: #2c3e50;
+        font-size: 1.5rem;
+        font-weight: 800;
+    }
+    /* "New Chat" Button Style */
+    .new-chat-btn {
+        background-color: transparent;
+        color: #d32f2f;
+        border: 1px solid #d32f2f;
+        padding: 8px 15px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: bold;
+        transition: all 0.2s;
+    }
+    .new-chat-btn:hover {
+        background-color: #d32f2f;
+        color: white;
+    }
+    /* Language Picker Banner */
+    .lang-banner {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 12px 16px;
+        background: #e8f5e9;
+        border-bottom: 1px solid #c8e6c9;
+        flex-shrink: 0;
+    }
+    .lang-banner label {
+        font-size: 0.9rem;
+        color: #333;
+        font-weight: 500;
+    }
+    .lang-select {
+        padding: 8px 14px;
+        border: 1px solid #aaa;
+        border-radius: 20px;
+        background: #fff;
+        font-size: 0.88rem;
+        cursor: pointer;
+        outline: none;
+        min-width: 160px;
+    }
+    .lang-select:focus {
+        border-color: #2e7d32;
+    }
+    /* Chat Container */
+    #chat {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding: 15px;
+        background: #ffffff;
+        display: flex;
+        flex-direction: column;
+    }
+    /* Message Bubbles */
+    .message {
+        margin-bottom: 20px;
+        padding: 15px;
+        border-radius: 12px;
+        line-height: 1.5;
+        max-width: 85%;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        word-wrap: break-word;
+    }
+    .user {
+        align-self: flex-end;
+        background-color: #e3f2fd;
+        color: #333;
+        border-bottom-right-radius: 2px;
+        text-align: left;
+    }
+    .bot {
+        align-self: flex-start;
+        background-color: #f1f8e9;
+        color: #333;
+        border-bottom-left-radius: 2px;
+    }
+    .label {
+        color: black !important;
+        font-weight: 800;
+        font-size: 0.85em;
+        margin-bottom: 6px;
+        display: block;
+        letter-spacing: 0.5px;
+    }
+    /* Input Area */
+    .input-group {
+        display: flex;
+        gap: 10px;
+        padding: 15px;
+        background-color: #fff;
+        border-top: 1px solid #eee;
+    }
+    input {
+        flex-grow: 1;
+        padding: 15px;
+        border: 1px solid #ccc;
+        border-radius: 25px;
+        font-size: 16px;
+        outline: none;
+    }
+    input:focus { border-color: #2e7d32; }
+    button#sendBtn {
+        padding: 0 25px;
+        background-color: #2e7d32;
+        color: white;
+        border: none;
+        border-radius: 25px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: bold;
+    }
+    button#sendBtn:hover { background-color: #1b5e20; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    /* Markdown Fixes */
+    .bot p { margin-top: 0; margin-bottom: 10px; }
+    .bot p:last-child { margin-bottom: 0; }
+    .bot ul, .bot ol { padding-left: 20px; margin-bottom: 0; }
+    /* Animation */
+    .typing-indicator { display: inline-flex; gap: 4px; padding: 5px 0; }
+    .dot { width: 6px; height: 6px; background-color: #555; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
+    .dot:nth-child(1) { animation-delay: -0.32s; }
+    .dot:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+    /* Mobile Responsive Header */
+    @media (max-width: 600px) {
+        .header-container {
+            flex-direction: column;
+            justify-content: center;
+            gap: 15px;
+            padding: 15px 10px;
+        }
+        h2 {
+            font-size: 1.35rem;
+            white-space: nowrap;
+        }
+        .header-container > div {
+            justify-content: center;
+            width: 100%;
+            gap: 10px;
+        }
+        .new-chat-btn {
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            border-width: 1px;
+        }
+        .lang-banner {
+            flex-direction: column;
+            gap: 8px;
+            padding: 10px;
+        }
+        .lang-select {
+            min-width: 140px;
+        }
+    }
+  </style>
+</head>
+<body>
+  <div class="header-container">
+      <h2>Multi-LLM Chat Assistant</h2>
+      <div style="display: flex; align-items: center;">
+          <button class="new-chat-btn" onclick="resetChat()">New Chat</button>
+      </div>
+  </div>
+  <div class="lang-banner" id="langBanner">
+      <label for="langSelect">Choose your language:</label>
+      <select class="lang-select" id="langSelect" onchange="selectLang(this.value)">
+          <option value="" disabled selected>Select language...</option>
+          <option value="en">English</option>
+          <option value="tr">Turkish</option>
+          <option value="zh">Chinese (Mandarin)</option>
+          <option value="hi">Hindi</option>
+          <option value="es">Spanish</option>
+          <option value="fr">French</option>
+          <option value="ar">Arabic</option>
+          <option value="bn">Bengali</option>
+          <option value="pt">Portuguese</option>
+          <option value="ru">Russian</option>
+          <option value="ur">Urdu</option>
+      </select>
+  </div>
+  <div id="chat"></div>
+  <div id="typing-bubble" class="message bot" style="display: none;">
+      <span class="label">Assistant</span>
+      <div class="typing-indicator">
+          <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      </div>
+  </div>
+  <div class="input-group">
+      <input id="input" placeholder="Type a message..." autocomplete="off" onkeydown="if(event.key==='Enter') send()" />
+      <button id="sendBtn" onclick="send()">Send</button>
+  </div>
+  <script>
+    marked.setOptions({ breaks: true, gfm: true });
+    const chatDiv = document.getElementById("chat");
+    const input = document.getElementById("input");
+    const sendBtn = document.getElementById("sendBtn");
+    const typingBubble = document.getElementById("typing-bubble");
+    const langBanner = document.getElementById("langBanner");
+    let selectedLang = null;
+    function scrollToBottom() { chatDiv.scrollTop = chatDiv.scrollHeight; }
+    function selectLang(lang) {
+        if (!lang) return;
+        selectedLang = lang;
+        // Send to backend
+        fetch("/set-language", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ language: lang })
+        }).catch(err => console.error("Failed to set language:", err));
+        // Collapse banner after a short delay
+        setTimeout(() => {
+            langBanner.style.display = "none";
+        }, 400);
+    }
+    function createMessageHTML(role, text) {
+        const isUser = role === "user";
+        const cssClass = isUser ? "user" : "bot";
+        const label = isUser ? "You" : "Assistant";
+        const content = isUser ? text : marked.parse(text.replace(/ — /g, ', ').replace(/—/g, ', ').replace(/ -- /g, ', ').replace(/--/g, ', '));
+        return `
+            <div class="message ${cssClass}">
+                <span class="label">${label}</span>
+                <div>${content}</div>
+            </div>`;
+    }
+    async function loadHistory() {
+      try {
+        const res = await fetch("/history");
+        const history = await res.json();
+        chatDiv.innerHTML = "";
+        history.forEach(msg => {
+          chatDiv.innerHTML += createMessageHTML(msg.role, msg.parts[0].text);
+        });
+        // If there's already chat history, hide the language picker
+        if (history.length > 0) {
+            langBanner.style.display = "none";
+        }
+        scrollToBottom();
+      } catch (err) { console.error("Failed to load history:", err); }
+    }
+    // Function to Reset Chat
+    async function resetChat() {
+        if(!confirm("Are you sure you want to start a new conversation?")) return;
+        try {
+            await fetch("/reset", { method: "POST" });
+            chatDiv.innerHTML = "";
+            input.value = "";
+            selectedLang = null;
+            // Show language picker again
+            langBanner.style.display = "flex";
+            document.getElementById("langSelect").selectedIndex = 0;
+            chatDiv.innerHTML = `<div style="text-align:center; color:#888; margin-top:20px; font-size:0.9em;">Conversation cleared. Start a new topic!</div>`;
+        } catch (err) {
+            alert("Error clearing chat.");
+        }
+    }
+    async function send() {
+      const msg = input.value.trim();
+      if (!msg) return;
+      input.disabled = true; sendBtn.disabled = true;
+      chatDiv.innerHTML += createMessageHTML("user", msg);
+      input.value = ""; scrollToBottom();
+      // Hide language picker once they start chatting
+      langBanner.style.display = "none";
+      const typingClone = typingBubble.cloneNode(true);
+      typingClone.id = "active-typing";
+      typingClone.style.display = "block";
+      chatDiv.appendChild(typingClone);
+      scrollToBottom();
+      try {
+          const res = await fetch("/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: msg })
+          });
+          const data = await res.json();
+          const activeTyping = document.getElementById("active-typing");
+          if (activeTyping) activeTyping.remove();
+          chatDiv.innerHTML += createMessageHTML("model", data.reply);
+      } catch (error) {
+          const activeTyping = document.getElementById("active-typing");
+          if (activeTyping) activeTyping.remove();
+          chatDiv.innerHTML += `
+            <div class="message bot" style="border: 1px solid #f5c6cb; background-color: #f8d7da; color: #721c24;">
+                <span class="label">System</span>
+                <div>Server is busy. Please wait a few seconds and try again.</div>
+            </div>`;
+      }
+      input.disabled = false; sendBtn.disabled = false; input.focus(); scrollToBottom();
+    }
+    window.onload = loadHistory;
+  </script>
+</body>
+</html>
