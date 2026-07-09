@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Chat Review</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f2f5;
+      color: #333;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    /* ---- TOP BAR ---- */
+    .topbar {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .topbar h1 { font-size: 1.2rem; font-weight: 700; }
+    .topbar-links {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .topbar a {
+      color: #90caf9;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    .topbar a:hover { text-decoration: underline; }
+    .refresh-btn {
+      background: transparent;
+      color: #90caf9;
+      border: 1px solid #90caf9;
+      padding: 5px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+    .refresh-btn:hover {
+      background: #90caf9;
+      color: #1a1a2e;
+    }
+    .model-selector {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .model-selector label {
+      color: #90caf9;
+      font-size: 0.85rem;
+    }
+    .model-select {
+      background: #16213e;
+      color: #fff;
+      border: 1px solid #90caf9;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      outline: none;
+    }
+    .model-select:focus { border-color: #fff; }
+    /* ---- LAYOUT ---- */
+    .container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    /* ---- SIDEBAR ---- */
+    .sidebar {
+      width: 380px;
+      background: #fff;
+      border-right: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .filters {
+      padding: 12px 16px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .filters select, .filters button {
+      padding: 6px 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      background: #fff;
+      cursor: pointer;
+    }
+    .filters button {
+      background: #1a1a2e;
+      color: #fff;
+      border: none;
+    }
+    .filters button:hover { background: #16213e; }
+    .session-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0;
+    }
+    .session-item {
+      padding: 14px 16px;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+      transition: background 0.15s;
+      position: relative;
+    }
+    .session-item:hover { background: #f7f9fc; }
+    .session-item.active { background: #e8f0fe; border-left: 3px solid #1a73e8; }
+    .session-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .session-date { font-size: 0.8rem; color: #666; }
+    .session-msgs { font-size: 0.75rem; color: #999; }
+    .session-badges { display: flex; gap: 6px; margin-top: 6px; }
+    .badge {
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge-lang { background: #e3f2fd; color: #1565c0; }
+    .badge-flagged { background: #fce4ec; color: #c62828; }
+    .badge-goal { background: #e8f5e9; color: #2e7d32; }
+    .badge-ip { background: #f3e5f5; color: #6a1b9a; font-size: 0.68rem; }
+    .pagination {
+      padding: 10px 16px;
+      border-top: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.82rem;
+      flex-shrink: 0;
+    }
+    .pagination button {
+      padding: 5px 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+    /* ---- MAIN PANEL ---- */
+    .main-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .empty-state {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #aaa;
+      font-size: 1.1rem;
+    }
+    /* Session detail header */
+    .detail-header {
+      padding: 16px 24px;
+      background: #fff;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      flex-shrink: 0;
+    }
+    .detail-header-info { flex: 1; }
+    .detail-header-info h3 { font-size: 0.95rem; margin-bottom: 4px; }
+    .detail-header-info p { font-size: 0.8rem; color: #666; margin-bottom: 2px; }
+    .detail-actions { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; }
+    .detail-actions select, .detail-actions button {
+      padding: 6px 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .btn-flag {
+      background: #fff;
+      color: #c62828;
+      border-color: #c62828;
+    }
+    .btn-flag.flagged {
+      background: #c62828;
+      color: #fff;
+    }
+    .btn-notes {
+      background: #fff;
+      color: #1565c0;
+      border-color: #1565c0;
+    }
+    /* Messages */
+    .message-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px;
+    }
+    .msg {
+      margin-bottom: 16px;
+      max-width: 75%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      line-height: 1.5;
+      font-size: 0.92rem;
+      word-wrap: break-word;
+    }
+    .msg-user {
+      margin-left: auto;
+      background: #e3f2fd;
+      border-bottom-right-radius: 2px;
+    }
+    .msg-model {
+      margin-right: auto;
+      background: #f1f8e9;
+      border-bottom-left-radius: 2px;
+    }
+    .msg-label {
+      font-weight: 700;
+      font-size: 0.78rem;
+      margin-bottom: 4px;
+      display: block;
+    }
+    .msg-time {
+      font-size: 0.7rem;
+      color: #999;
+      margin-top: 4px;
+      text-align: right;
+    }
+    /* Notes modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      width: 420px;
+      max-width: 90vw;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    }
+    .modal h3 { margin-bottom: 12px; }
+    .modal textarea {
+      width: 100%;
+      height: 120px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 0.9rem;
+      resize: vertical;
+      font-family: inherit;
+    }
+    .modal-btns {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .modal-btns button {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .modal-btns .save-btn {
+      background: #1a73e8;
+      color: #fff;
+      border: none;
+    }
+    /* Mobile */
+    @media (max-width: 768px) {
+      .sidebar { width: 100%; }
+      .container { flex-direction: column; }
+      .main-panel { min-height: 60vh; }
+      .msg { max-width: 90%; }
+    }
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <h1>Chat Review Dashboard</h1>
+  <div class="topbar-links">
+    <div class="model-selector">
+      <label>AI Model:</label>
+      <select class="model-select" id="modelSelect" onchange="switchModel(this.value)">
+        <optgroup label="Paid (Your API Keys)">
+          <option value="openai">GPT-4o</option>
+          <option value="claude">Claude Sonnet</option>
+        </optgroup>
+        <optgroup label="Google Gemini (Free)">
+          <option value="gemini_35_flash">Gemini 3.5 Flash</option>
+          <option value="gemini">Gemini 2.5 Flash</option>
+          <option value="gemini_25_pro">Gemini 2.5 Pro</option>
+          <option value="gemini_20_flash">Gemini 2.0 Flash</option>
+          <option value="gemini_31_flash_lite">Gemini 3.1 Flash-Lite</option>
+        </optgroup>
+        <optgroup label="OpenRouter (Free)">
+          <option value="or_nemotron_ultra">Nemotron 3 Ultra 550B</option>
+          <option value="or_nemotron_super">Nemotron 3 Super 120B</option>
+          <option value="or_gpt_oss_120b">GPT-OSS 120B</option>
+          <option value="or_kimi_k2.6">Kimi K2.6</option>
+          <option value="or_hermes_405b">Hermes 3 405B</option>
+          <option value="or_qwen3_next_80b">Qwen3 Next 80B</option>
+          <option value="or_qwen3_coder">Qwen3 Coder</option>
+          <option value="or_gemma4_31b">Gemma 4 31B</option>
+          <option value="or_llama3.3_70b">Llama 3.3 70B</option>
+          <option value="or_laguna_m1">Laguna M.1</option>
+          <option value="or_north_mini_code">North Mini Code</option>
+        </optgroup>
+        <optgroup label="Groq (Free, Ultra-Fast)">
+          <option value="groq_llama3.3_70b">Llama 3.3 70B</option>
+          <option value="groq_gpt_oss_120b">GPT-OSS 120B</option>
+          <option value="groq_llama4_scout">Llama 4 Scout 17B</option>
+          <option value="groq_qwen3_32b">Qwen3 32B</option>
+          <option value="groq_qwen3.6_27b">Qwen3.6 27B</option>
+          <option value="groq_gpt_oss_20b">GPT-OSS 20B</option>
+        </optgroup>
+      </select>
+    </div>
+    <button class="refresh-btn" onclick="refreshData()">Refresh</button>
+    <a href="/">Back to Chat</a>
+  </div>
+</div>
+<div class="container">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="filters">
+      <select id="filterLang">
+        <option value="">All Languages</option>
+        <option value="en">English</option>
+        <option value="tr">Turkish</option>
+        <option value="de">German</option>
+      </select>
+      <select id="filterOutcome">
+        <option value="">All Outcomes</option>
+        <option value="in_progress">In Progress</option>
+        <option value="goal_reached">Goal Reached</option>
+        <option value="dropped_off">Dropped Off</option>
+      </select>
+      <select id="filterFlagged">
+        <option value="">All</option>
+        <option value="true">Flagged Only</option>
+      </select>
+      <button onclick="loadSessions(1)">Filter</button>
+    </div>
+    <div class="session-list" id="sessionList"></div>
+    <div class="pagination">
+      <button id="prevBtn" onclick="changePage(-1)" disabled>Prev</button>
+      <span id="pageInfo">Page 1</span>
+      <button id="nextBtn" onclick="changePage(1)" disabled>Next</button>
+    </div>
+  </div>
+  <!-- MAIN PANEL -->
+  <div class="main-panel" id="mainPanel">
+    <div class="empty-state">Select a conversation to review</div>
+  </div>
+</div>
+<!-- Notes Modal -->
+<div class="modal-overlay" id="notesModal">
+  <div class="modal">
+    <h3>Admin Notes</h3>
+    <textarea id="notesText" placeholder="Add your notes about this conversation..."></textarea>
+    <div class="modal-btns">
+      <button onclick="closeNotesModal()">Cancel</button>
+      <button class="save-btn" onclick="saveNotes()">Save</button>
+    </div>
+  </div>
+</div>
+<script>
+  let currentPage = 1;
+  let totalSessions = 0;
+  const perPage = 20;
+  let activeSessionId = null;
+  let activeSessionData = null;
+  // ---- SESSIONS ----
+  async function loadSessions(page = 1) {
+    currentPage = page;
+    const lang = document.getElementById("filterLang").value;
+    const outcome = document.getElementById("filterOutcome").value;
+    const flagged = document.getElementById("filterFlagged").value;
+    let url = `/api/sessions?page=${page}&per_page=${perPage}`;
+    if (lang) url += `&language=${lang}`;
+    if (outcome) url += `&outcome=${outcome}`;
+    if (flagged) url += `&flagged=${flagged}`;
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      totalSessions = data.total;
+      renderSessionList(data.sessions);
+      updatePagination();
+    } catch (err) {
+      console.error("Failed to load sessions:", err);
+    }
+  }
+  function renderSessionList(sessions) {
+    const list = document.getElementById("sessionList");
+    if (!sessions.length) {
+      list.innerHTML = '<div style="padding:20px;color:#999;text-align:center;">No conversations found</div>';
+      return;
+    }
+    list.innerHTML = sessions.map(s => {
+      const date = s.started_at ? new Date(s.started_at).toLocaleString() : "Unknown";
+      const isActive = s.id === activeSessionId ? "active" : "";
+      return `
+        <div class="session-item ${isActive}" onclick="loadMessages('${s.id}')">
+          <div class="session-meta">
+            <span class="session-date">${date}</span>
+            <span class="session-msgs">${s.message_count} msgs</span>
+          </div>
+          <div class="session-badges">
+            ${s.language ? `<span class="badge badge-lang">${s.language.toUpperCase()}</span>` : ''}
+            ${s.flagged ? '<span class="badge badge-flagged">Flagged</span>' : ''}
+            ${s.outcome === 'goal_reached' ? '<span class="badge badge-goal">Goal</span>' : ''}
+            ${s.ip_address ? `<span class="badge badge-ip">${s.ip_address}</span>` : ''}
+          </div>
+        </div>`;
+    }).join("");
+  }
+  function updatePagination() {
+    const totalPages = Math.ceil(totalSessions / perPage) || 1;
+    document.getElementById("pageInfo").textContent = `Page ${currentPage} of ${totalPages}`;
+    document.getElementById("prevBtn").disabled = currentPage <= 1;
+    document.getElementById("nextBtn").disabled = currentPage >= totalPages;
+  }
+  function changePage(delta) {
+    loadSessions(currentPage + delta);
+  }
+  // ---- MESSAGES ----
+  async function loadMessages(sessionId) {
+    activeSessionId = sessionId;
+    // highlight active item
+    document.querySelectorAll(".session-item").forEach(el => el.classList.remove("active"));
+    event.currentTarget?.classList.add("active");
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/messages`);
+      const data = await res.json();
+      activeSessionData = data.session;
+      renderDetail(data.session, data.messages);
+    } catch (err) {
+      console.error("Failed to load messages:", err);
+    }
+  }
+  function renderDetail(session, messages) {
+    const panel = document.getElementById("mainPanel");
+    const startDate = session.started_at ? new Date(session.started_at).toLocaleString() : "Unknown";
+    const flagClass = session.flagged ? "btn-flag flagged" : "btn-flag";
+    const flagLabel = session.flagged ? "Unflag" : "Flag";
+    let html = `
+      <div class="detail-header">
+        <div class="detail-header-info">
+          <h3>Session: ${session.id.substring(0, 8)}...</h3>
+          <p>Started: ${startDate}</p>
+          <p>Language: ${session.language || '-'} &nbsp;|&nbsp; IP: ${session.ip_address || '-'}</p>
+          <p style="font-size:0.75rem;color:#999;margin-top:2px;">UA: ${session.user_agent ? session.user_agent.substring(0, 80) + '...' : '-'}</p>
+        </div>
+        <div class="detail-actions">
+          <select onchange="updateOutcome('${session.id}', this.value)">
+            <option value="in_progress" ${session.outcome === 'in_progress' ? 'selected' : ''}>In Progress</option>
+            <option value="goal_reached" ${session.outcome === 'goal_reached' ? 'selected' : ''}>Goal Reached</option>
+            <option value="dropped_off" ${session.outcome === 'dropped_off' ? 'selected' : ''}>Dropped Off</option>
+          </select>
+          <button class="${flagClass}" onclick="toggleFlag('${session.id}')">${flagLabel}</button>
+          <button class="btn-notes" onclick="openNotesModal()">Notes</button>
+        </div>
+      </div>
+      <div class="message-list">`;
+    messages.forEach(m => {
+      const cssClass = m.role === "user" ? "msg-user" : "msg-model";
+      const label = m.role === "user" ? "Visitor" : "Assistant (AI)";
+      const time = m.created_at ? new Date(m.created_at).toLocaleTimeString() : "";
+      html += `
+        <div class="msg ${cssClass}">
+          <span class="msg-label">${label}</span>
+          <div>${m.text}</div>
+          <div class="msg-time">${time}</div>
+        </div>`;
+    });
+    html += `</div>`;
+    panel.innerHTML = html;
+  }
+  // ---- ACTIONS ----
+  async function updateOutcome(sessionId, outcome) {
+    await fetch(`/api/sessions/${sessionId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ outcome })
+    });
+    loadSessions(currentPage);
+  }
+  async function toggleFlag(sessionId) {
+    const newFlagged = !activeSessionData.flagged;
+    await fetch(`/api/sessions/${sessionId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ flagged: newFlagged })
+    });
+    activeSessionData.flagged = newFlagged;
+    loadMessages(sessionId);
+    loadSessions(currentPage);
+  }
+  function openNotesModal() {
+    document.getElementById("notesText").value = activeSessionData.notes || "";
+    document.getElementById("notesModal").classList.add("open");
+  }
+  function closeNotesModal() {
+    document.getElementById("notesModal").classList.remove("open");
+  }
+  async function saveNotes() {
+    const notes = document.getElementById("notesText").value;
+    await fetch(`/api/sessions/${activeSessionId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notes })
+    });
+    activeSessionData.notes = notes;
+    closeNotesModal();
+  }
+  // ---- MODEL SWITCHING ----
+  async function loadActiveModel() {
+    try {
+      const res = await fetch("/api/model");
+      const data = await res.json();
+      document.getElementById("modelSelect").value = data.model;
+    } catch (err) {
+      console.error("Failed to load active model:", err);
+    }
+  }
+  async function switchModel(model) {
+    try {
+      await fetch("/api/model", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model })
+      });
+    } catch (err) {
+      console.error("Failed to switch model:", err);
+      alert("Failed to switch model. Check that the API key is set.");
+    }
+  }
+  // ---- REFRESH ----
+  function refreshData() {
+    loadSessions(currentPage);
+    // Also refresh the active conversation if one is open
+    if (activeSessionId) {
+      loadMessages(activeSessionId);
+    }
+  }
+  // ---- INIT ----
+  window.onload = () => { loadSessions(1); loadActiveModel(); };
+</script>
+</body>
+</html>
